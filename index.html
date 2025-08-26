@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fresh Sabji & More</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- jsPDF Library for PDF generation -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <!-- Google Fonts: Poppins & Noto Sans Devanagari -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&family=Noto+Sans+Devanagari:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        /* Custom styles */
+        body {
+            font-family: 'Poppins', sans-serif;
+            /* Updated background */
+            background: linear-gradient(to top right, #e6fffa, #e3f2fd);
+        }
+        .hindi-font {
+            font-family: 'Noto Sans Devanagari', 'Poppins', sans-serif;
+        }
+        /* Glassmorphism Effect */
+        .glass-card {
+            background: rgba(255, 255, 255, 0.6);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+        /* Tab styling */
+        .tab-btn.active {
+            background-color: #22c55e;
+            color: white;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+        /* Animation for adding items to cart */
+        @keyframes pop {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+        .item-added {
+            animation: pop 0.3s ease-out;
+        }
+        /* Styles for selected quantity button */
+        .quantity-btn.selected {
+            background-color: #22c55e;
+            color: white;
+            border-color: #16a34a;
+        }
+        /* Cart overlay transition */
+        #cart-overlay.hidden {
+            opacity: 0;
+            transform: translateY(100%);
+        }
+    </style>
+</head>
+<body class="text-gray-800">
+
+    <div class="container mx-auto p-4 pb-24">
+        
+        <!-- Header -->
+        <header class="text-center mb-6">
+            <h1 class="text-3xl md:text-4xl font-bold text-green-700 hindi-font">Grocery</h1>
+            <p class="text-gray-600 mt-2 text-sm">Add items to Cart </p>
+        </header>
+
+        <!-- Tab Navigation -->
+        <nav class="flex justify-center gap-2 sm:gap-4 mb-6 sticky top-4 z-40 p-2 glass-card rounded-full">
+            <button class="tab-btn active" data-target="vegetables">Veggies</button>
+            <button class="tab-btn" data-target="fruits">Fruits</button>
+            <button class="tab-btn" data-target="masalas">Masalas</button>
+            <button class="tab-btn" data-target="non-veg">Non-Veg</button>
+        </nav>
+
+        <!-- Main Content -->
+        <main class="flex flex-col gap-8">
+            <!-- Sections Container -->
+            <div id="sections-container">
+                <!-- Vegetables Section -->
+                <section id="vegetables" class="category-section">
+                    <div id="vegetable-list" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3"></div>
+                </section>
+                <!-- Fruits Section -->
+                <section id="fruits" class="category-section hidden">
+                    <div id="fruit-list" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3"></div>
+                </section>
+                <!-- Masala Section -->
+                <section id="masalas" class="category-section hidden">
+                    <div id="masala-list" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3"></div>
+                </section>
+                <!-- Non-Veg Section -->
+                <section id="non-veg" class="category-section hidden">
+                    <div id="non-veg-list" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3"></div>
+                </section>
+            </div>
+        </main>
+    </div>
+
+    <!-- Floating Cart Button -->
+    <button id="floating-cart-btn" class="fixed bottom-6 right-6 bg-green-600 text-white w-16 h-16 rounded-full shadow-lg flex items-center justify-center transform hover:scale-110 transition-transform">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
+        <span id="cart-item-count" class="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full h-6 w-6 flex items-center justify-center hidden">0</span>
+    </button>
+
+    <!-- Cart Overlay -->
+    <div id="cart-overlay" class="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-end transition-all duration-300 hidden z-50">
+        <div class="glass-card w-full max-w-2xl rounded-t-2xl p-6 shadow-xl transform transition-transform duration-300">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-2xl font-bold">Aapki Tokri</h2>
+                <button id="close-cart-btn" class="text-gray-700 hover:text-gray-900"><svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg></button>
+            </div>
+            <div id="cart-items" class="mb-6 max-h-64 overflow-y-auto">
+                <p id="empty-cart-message" class="text-gray-600">Add item to cart</p>
+            </div>
+            <button id="process-order" class="w-full bg-green-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-green-700 transition-colors disabled:bg-gray-400 flex items-center justify-center"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg><span>List Download Karein (PDF)</span></button>
+        </div>
+    </div>
+
+    <script>
+        // Product Data with Hinglish names and new items
+        const products = [
+             // Vegetables
+            { id: 1, hindiName: 'Aalu', category: 'vegetable', options: ['0.5 kg', '1 kg', '2 kg'], image: 'https://placehold.co/100x100/F2C279/5C3D2E?text=Aalu' },
+            { id: 2, hindiName: 'Tamatar', category: 'vegetable', options: ['0.5 kg', '1 kg', '2 kg'], image: 'https://placehold.co/100x100/E74C3C/FFFFFF?text=Tamatar' },
+            { id: 3, hindiName: 'Pyaz', category: 'vegetable', options: ['0.5 kg', '1 kg', '2 kg'], image: 'https://placehold.co/100x100/D2B4DE/512E5F?text=Pyaz' },
+            { id: 11, hindiName: 'Hari Mirch', category: 'vegetable', options: ['100 g', '250 g'], image: 'https://placehold.co/100x100/2ECC71/FFFFFF?text=Mirch' },
+            { id: 12, hindiName: 'Shimla Mirch', category: 'vegetable', options: ['0.5 kg', '1 kg'], image: 'https://placehold.co/100x100/27AE60/FFFFFF?text=Shimla+Mirch' },
+            { id: 13, hindiName: 'Patta Gobhi', category: 'vegetable', options: ['1 piece', '2 pieces'], image: 'https://placehold.co/100x100/ABEBC6/145A32?text=Gobhi' },
+            { id: 14, hindiName: 'Phool Gobhi', category: 'vegetable', options: ['1 piece', '2 pieces'], image: 'https://placehold.co/100x100/E8F8F5/117A65?text=Phool+Gobhi' },
+            { id: 15, hindiName: 'Bhindi', category: 'vegetable', options: ['0.5 kg', '1 kg'], image: 'https://placehold.co/100x100/58D68D/145A32?text=Bhindi' },
+            { id: 16, hindiName: 'Baingan', category: 'vegetable', options: ['0.5 kg', '1 kg'], image: 'https://placehold.co/100x100/8E44AD/FFFFFF?text=Baingan' },
+            { id: 17, hindiName: 'Mooli', category: 'vegetable', options: ['0.5 kg', '1 kg'], image: 'https://placehold.co/100x100/ECF0F1/2C3E50?text=Mooli' },
+            { id: 18, hindiName: 'Gajar', category: 'vegetable', options: ['0.5 kg', '1 kg'], image: 'https://placehold.co/100x100/E67E22/FFFFFF?text=Gajar' },
+            { id: 19, hindiName: 'Karela', category: 'vegetable', options: ['0.5 kg', '1 kg'], image: 'https://placehold.co/100x100/1E8449/FFFFFF?text=Karela' },
+            { id: 20, hindiName: 'Tinda', category: 'vegetable', options: ['0.5 kg', '1 kg'], image: 'https://placehold.co/100x100/A9DFBF/145A32?text=Tinda' },
+            { id: 21, hindiName: 'Lauki', category: 'vegetable', options: ['1 piece', '2 pieces', '3 pieces'], image: 'https://placehold.co/100x100/D5F5E3/145A32?text=Lauki' },
+            { id: 22, hindiName: 'Tori', category: 'vegetable', options: ['0.5 kg', '1 kg'], image: 'https://placehold.co/100x100/82E0AA/145A32?text=Tori' },
+            { id: 23, hindiName: 'Kakdi', category: 'vegetable', options: ['0.5 kg', '1 kg'], image: 'https://placehold.co/100x100/A3E4D7/117A65?text=Kakdi' },
+            { id: 24, hindiName: 'Kheera', category: 'vegetable', options: ['0.5 kg', '1 kg'], image: 'https://placehold.co/100x100/73C6B6/117A65?text=Kheera' },
+            { id: 25, hindiName: 'Matar', category: 'vegetable', options: ['0.5 kg', '1 kg'], image: 'https://placehold.co/100x100/1ABC9C/FFFFFF?text=Matar' },
+            { id: 26, hindiName: 'Hari Beans', category: 'vegetable', options: ['250 g', '0.5 kg'], image: 'https://placehold.co/100x100/16A085/FFFFFF?text=Beans' },
+            { id: 27, hindiName: 'Palak', category: 'vegetable', options: ['1 bunch', '2 bunches'], image: 'https://placehold.co/100x100/0E6655/FFFFFF?text=Palak' },
+            { id: 28, hindiName: 'Methi', category: 'vegetable', options: ['1 bunch', '2 bunches'], image: 'https://placehold.co/100x100/0B5345/FFFFFF?text=Methi' },
+            { id: 29, hindiName: 'Sarson ka Saag', category: 'vegetable', options: ['1 bunch', '2 bunches'], image: 'https://placehold.co/100x100/0B5345/FFFFFF?text=Sarson' },
+            { id: 30, hindiName: 'Bathua', category: 'vegetable', options: ['1 bunch', '2 bunches'], image: 'https://placehold.co/100x100/0B5345/FFFFFF?text=Bathua' },
+            { id: 31, hindiName: 'Arbi', category: 'vegetable', options: ['0.5 kg', '1 kg'], image: 'https://placehold.co/100x100/D5DBDB/2C3E50?text=Arbi' },
+            { id: 32, hindiName: 'Shalgam', category: 'vegetable', options: ['0.5 kg', '1 kg'], image: 'https://placehold.co/100x100/D6DBDF/2C3E50?text=Shalgam' },
+            { id: 33, hindiName: 'Kaddu', category: 'vegetable', options: ['0.5 kg', '1 kg'], image: 'https://placehold.co/100x100/F5B041/FFFFFF?text=Kaddu' },
+            { id: 34, hindiName: 'Chukandar', category: 'vegetable', options: ['0.5 kg', '1 kg'], image: 'https://placehold.co/100x100/CB4335/FFFFFF?text=Chukandar' },
+            { id: 35, hindiName: 'Hara Dhaniya', category: 'vegetable', options: ['1 bunch', '2 bunches'], image: 'https://placehold.co/100x100/28B463/FFFFFF?text=Dhaniya' },
+            { id: 36, hindiName: 'Pudina', category: 'vegetable', options: ['1 bunch', '2 bunches'], image: 'https://placehold.co/100x100/28B463/FFFFFF?text=Pudina' },
+            { id: 37, hindiName: 'Curry Patta', category: 'vegetable', options: ['1 bunch'], image: 'https://placehold.co/100x100/1D8348/FFFFFF?text=Curry+Patta' },
+            { id: 38, hindiName: 'Kacchi Haldi', category: 'vegetable', options: ['100 g', '250 g'], image: 'https://placehold.co/100x100/F39C12/FFFFFF?text=Haldi' },
+            // Fruits
+            { id: 50, hindiName: 'Seb (Apple)', category: 'fruit', options: ['0.5 kg', '1 kg', '2 kg'], image: 'https://placehold.co/100x100/C0392B/FFFFFF?text=Apple' },
+            { id: 51, hindiName: 'Kela (Banana)', category: 'fruit', options: ['6 pieces', '12 pieces'], image: 'https://placehold.co/100x100/F1C40F/FFFFFF?text=Banana' },
+            { id: 52, hindiName: 'Anaar (Pomegranate)', category: 'fruit', options: ['1 kg', '2 kg'], image: 'https://placehold.co/100x100/E74C3C/FFFFFF?text=Anaar' },
+            { id: 53, hindiName: 'Santra (Orange)', category: 'fruit', options: ['1 kg', '2 kg'], image: 'https://placehold.co/100x100/E67E22/FFFFFF?text=Orange' },
+            { id: 54, hindiName: 'Angoor (Grapes)', category: 'fruit', options: ['0.5 kg', '1 kg'], image: 'https://placehold.co/100x100/9B59B6/FFFFFF?text=Grapes' },
+            { id: 55, hindiName: 'Aam (Mango)', category: 'fruit', options: ['1 kg', '2 kg'], image: 'https://placehold.co/100x100/F39C12/FFFFFF?text=Mango' },
+            { id: 56, hindiName: 'Tarbuj (Watermelon)', category: 'fruit', options: ['1 piece', '2 pieces'], image: 'https://placehold.co/100x100/2ECC71/FFFFFF?text=Tarbuj' },
+            { id: 57, hindiName: 'Amrood (Guava)', category: 'fruit', options: ['0.5 kg', '1 kg'], image: 'https://placehold.co/100x100/A2D9CE/000000?text=Guava' },
+            // Masalas
+            { id: 4, hindiName: 'Lehsun', category: 'masala', options: ['100 g', '250 g', '500 g'], image: 'https://placehold.co/100x100/F5EEF8/76448A?text=Lehsun' },
+            { id: 5, hindiName: 'Adrak', category: 'masala', options: ['100 g', '250 g', '500 g'], image: 'https://placehold.co/100x100/FAD7A0/AF601A?text=Adrak' },
+            { id: 6, hindiName: 'Dhaniya Powder', category: 'masala', options: ['250 g', '500 g'], image: 'https://placehold.co/100x100/ABEBC6/196F3D?text=Dhaniya' },
+            // Non-Veg
+            { id: 7, hindiName: 'Chicken', category: 'non-veg', options: ['0.5 kg', '1 kg', '2 kg'], image: 'https://placehold.co/100x100/F5B7B1/A93226?text=Chicken' },
+            { id: 8, hindiName: 'Mutton', category: 'non-veg', options: ['0.5 kg', '1 kg', '2 kg'], image: 'https://placehold.co/100x100/E6B0AA/922B21?text=Mutton' },
+            { id: 10, hindiName: 'Ande', category: 'non-veg', options: ['6 pieces', '12 pieces', '30 pieces'], image: 'https://placehold.co/100x100/FDEBD0/E59866?text=Ande' },
+        ];
+
+        let cart = [];
+
+        // DOM Elements
+        const lists = {
+            vegetable: document.getElementById('vegetable-list'),
+            fruit: document.getElementById('fruit-list'),
+            masala: document.getElementById('masala-list'),
+            'non-veg': document.getElementById('non-veg-list'),
+        };
+        const cartOverlay = document.getElementById('cart-overlay');
+        const cartItemsContainer = document.getElementById('cart-items');
+        const emptyCartMessage = document.getElementById('empty-cart-message');
+        const processOrderBtn = document.getElementById('process-order');
+        const floatingCartBtn = document.getElementById('floating-cart-btn');
+        const closeCartBtn = document.getElementById('close-cart-btn');
+        const cartItemCount = document.getElementById('cart-item-count');
+        const tabButtons = document.querySelectorAll('.tab-btn');
+        const categorySections = document.querySelectorAll('.category-section');
+
+        // --- Tab Navigation Logic ---
+        tabButtons.forEach(button => {
+            button.classList.add('px-4', 'py-2', 'rounded-full', 'font-semibold', 'transition-all', 'duration-300'); // Add base styles
+            button.addEventListener('click', () => {
+                const targetId = button.dataset.target;
+                
+                // Update button styles
+                tabButtons.forEach(btn => btn.classList.remove('active'));
+                button.classList.add('active');
+
+                // Show/hide sections
+                categorySections.forEach(section => {
+                    if (section.id === targetId) {
+                        section.classList.remove('hidden');
+                    } else {
+                        section.classList.add('hidden');
+                    }
+                });
+            });
+        });
+
+        // --- Event Listeners ---
+        floatingCartBtn.addEventListener('click', () => cartOverlay.classList.remove('hidden'));
+        closeCartBtn.addEventListener('click', () => cartOverlay.classList.add('hidden'));
+        cartOverlay.addEventListener('click', (e) => {
+            if (e.target === cartOverlay) cartOverlay.classList.add('hidden');
+        });
+
+        // --- Product Rendering ---
+        function renderProducts() {
+            Object.values(lists).forEach(list => list.innerHTML = '');
+
+            products.forEach(product => {
+                const productCard = document.createElement('div');
+                productCard.className = 'glass-card rounded-xl shadow-lg p-3 flex flex-col justify-between';
+                productCard.id = `product-${product.id}`;
+
+                const quantityButtons = product.options.map((opt, index) => 
+                    `<button class="quantity-btn text-xs border border-gray-300 rounded-md px-2 py-1 transition-colors ${index === 0 ? 'selected' : ''}" data-quantity="${opt}">${opt}</button>`
+                ).join('');
+
+                const buttonColor = product.category === 'non-veg' ? 'bg-red-500 hover:bg-red-600' : 'bg-green-500 hover:bg-green-600';
+
+                productCard.innerHTML = `
+                    <div>
+                        <img src="${product.image}" alt="${product.hindiName}" class="w-16 h-16 mx-auto rounded-full mb-2 object-cover shadow-md" onerror="this.onerror=null;this.src='https://placehold.co/100x100/cccccc/ffffff?text=Image';">
+                        <h3 class="text-base font-bold text-center mb-2">${product.hindiName}</h3>
+                        <div class="flex flex-wrap justify-center gap-2 mb-3">
+                            ${quantityButtons}
+                        </div>
+                    </div>
+                    <button data-product-id="${product.id}" onclick="addToCart(${product.id})" class="w-full ${buttonColor} text-white font-semibold py-2 px-3 rounded-lg transition-colors flex items-center justify-center gap-2 text-sm">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path d="M3 1a1 1 0 000 2h1.22l.305 1.222a.997.997 0 00.97 1.222h10.01a1 1 0 00.97-1.222l-1.38-5.512A1 1 0 0013.22 1H4.215a1 1 0 00-.97 1.222L3.945 3H3a1 1 0 000-2zM6.5 11.5a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0zM16.5 11.5a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0z" /></svg>
+                        <span>Add</span>
+                    </button>
+                `;
+                
+                productCard.querySelectorAll('.quantity-btn').forEach(btn => {
+                    btn.addEventListener('click', () => {
+                        productCard.querySelectorAll('.quantity-btn').forEach(b => b.classList.remove('selected'));
+                        btn.classList.add('selected');
+                    });
+                });
+
+                if(lists[product.category]) {
+                    lists[product.category].appendChild(productCard);
+                }
+            });
+        }
+
+        // --- Cart Logic ---
+        window.addToCart = function(productId) {
+            const product = products.find(p => p.id === productId);
+            const productCard = document.getElementById(`product-${productId}`);
+            const selectedButton = productCard.querySelector('.quantity-btn.selected');
+            const quantity = selectedButton.dataset.quantity;
+
+            const existingItem = cart.find(item => item.id === productId);
+            if (existingItem) {
+                existingItem.quantity = quantity;
+            } else {
+                cart.push({ ...product, quantity });
+            }
+            updateCartUI();
+
+            const button = document.querySelector(`button[data-product-id='${productId}']`);
+            if (button) {
+                button.querySelector('span').textContent = 'Added';
+                button.classList.remove('bg-green-500', 'hover:bg-green-600', 'bg-red-500', 'hover:bg-red-600');
+                button.classList.add('bg-yellow-500', 'hover:bg-yellow-600');
+            }
+        }
+
+        window.removeFromCart = function(index) {
+            const removedItem = cart[index];
+            cart.splice(index, 1);
+            updateCartUI();
+
+            const button = document.querySelector(`button[data-product-id='${removedItem.id}']`);
+            if (button) {
+                button.querySelector('span').textContent = 'Add';
+                button.classList.remove('bg-yellow-500', 'hover:bg-yellow-600');
+                if (removedItem.category === 'non-veg') {
+                    button.classList.add('bg-red-500', 'hover:bg-red-600');
+                } else {
+                    button.classList.add('bg-green-500', 'hover:bg-green-600');
+                }
+            }
+        }
+
+        function updateCartUI() {
+            cartItemCount.textContent = cart.length;
+            cartItemCount.classList.toggle('hidden', cart.length === 0);
+
+            if (cart.length === 0) {
+                emptyCartMessage.style.display = 'block';
+                cartItemsContainer.innerHTML = ''; 
+                cartItemsContainer.appendChild(emptyCartMessage);
+                processOrderBtn.disabled = true;
+            } else {
+                emptyCartMessage.style.display = 'none';
+                cartItemsContainer.innerHTML = cart.map((item, index) => `
+                    <div class="flex justify-between items-center mb-3 p-3 glass-card rounded-lg item-added">
+                        <div>
+                            <p class="font-semibold">${item.hindiName}</p>
+                            <p class="text-sm text-gray-600">${item.quantity}</p>
+                        </div>
+                        <button onclick="removeFromCart(${index})" class="text-red-500 hover:text-red-700 font-bold p-1 rounded-full"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd" /></svg></button>
+                    </div>
+                `).join('');
+                processOrderBtn.disabled = false;
+            }
+        }
+
+        // --- PDF Generation ---
+        processOrderBtn.addEventListener('click', () => {
+            if (cart.length === 0) return;
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+            
+            const today = new Date();
+            const dateStr = today.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+
+            doc.setFontSize(20);
+            doc.setFont('helvetica', 'bold');
+            doc.text("Your Grocery List", 105, 22, null, null, 'center');
+            
+            doc.setFontSize(11);
+            doc.setFont('helvetica', 'normal');
+            doc.text(`Date: ${dateStr}`, 105, 30, null, null, 'center');
+            
+            doc.setLineWidth(0.5);
+            doc.line(20, 38, 190, 38);
+
+            doc.setFont('helvetica', 'bold');
+            doc.text("Item", 20, 46);
+            doc.text("Quantity", 140, 46);
+            doc.setFont('helvetica', 'normal');
+
+            let y = 56;
+            cart.forEach(item => {
+                doc.setFontSize(11);
+                doc.text(item.hindiName, 20, y); 
+                doc.text(item.quantity, 140, y);
+                y += 9;
+                if (y > 280) {
+                    doc.addPage();
+                    y = 20;
+                }
+            });
+            
+            doc.save(`order-list-${today.toISOString().slice(0,10)}.pdf`);
+        });
+
+        // --- Initial Load ---
+        document.addEventListener('DOMContentLoaded', () => {
+            renderProducts();
+            updateCartUI();
+        });
+    </script>
+
+</body>
+</html>
